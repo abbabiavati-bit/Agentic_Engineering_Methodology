@@ -25,6 +25,7 @@ As Karpathy puts it: *"A tight leash on an over-eager junior intern savant with 
 | Phases 1-4 | ~50% | Project plan — objective, research, refinement, rewrite |
 | Phase 5 | ~25% | Implementation plan — ordering, steps, verification criteria |
 | Phase 6 | ~25% | Execution — one step at a time, review every line |
+| Phase 7 | ~0-10% | Skillify stable workflows (optional — most projects skip this) |
 
 ---
 
@@ -225,6 +226,51 @@ After completing all steps, open a fresh context and have the AI review the full
 
 ---
 
+## Phase 7 — Skillify When Stable (Optional)
+
+**Who writes:** You, after running the workflow 2-3 times.
+
+Not every project has a Phase 7. Most don't. But when you find yourself re-running the same workflow across sessions or projects, stop copy-pasting prompts and lift the workflow into a reusable Claude Code **skill** or **plugin**.
+
+### The difference
+
+- **Skill** — a single-purpose `SKILL.md` file in `~/.claude/skills/<name>/`. Invoked with `/<name>` from any directory. Zero install overhead for you personally.
+- **Plugin** — a bundle of skills + slash commands + MCP servers + hooks, distributed via git or marketplace. Right fit when ≥3 related skills belong together and teammates need to install them.
+
+### The skillify test
+
+Extract a workflow into a skill when **all three** are true:
+
+1. **Repeated** — invoked across multiple sessions or projects, not one-shot.
+2. **Stable** — the prompt has settled; you've stopped tweaking it.
+3. **Triggered by a recognizable cue** — "new campaign", "deploy this", "run QA", not ad-hoc.
+
+Bundle skills into a plugin when **both** are true:
+
+1. **Clustered** — three or more related skills form one logical workflow.
+2. **Shared** — teammates need to run it on their own machines.
+
+### When NOT to skillify
+
+- Project-bound code (Express routes, page HTML, specific chart rendering) — stays in the project.
+- One-shot maintenance scripts (`patch_*.js`, `debug_tags.js`, data migrations) — not workflows.
+- Prompts still in flux — if you're tweaking the wording every run, it's not stable enough yet.
+- Single-invocation tasks — if you ran it once and won't run it again, skip.
+
+### How to extract
+
+1. Copy the phase prompt from `CLAUDE.md` into `~/.claude/skills/<name>/SKILL.md`.
+2. Add frontmatter: `name`, `description` (one line that makes relevance obvious), and a clear "trigger when" rule.
+3. Reference the scripts the skill calls by relative path — do not inline the script logic.
+4. Invoke `/<name>` from a fresh directory and confirm it runs end-to-end.
+5. When ≥3 skills cluster, create `plugin.json` and bundle.
+
+### Why this is optional
+
+Skillification has a real cost: the skill becomes a separate thing to version, test, and keep in sync with the project's scripts. Don't pay that cost until the workflow has earned it. The rule of thumb: run it twice project-local, then extract on the third run.
+
+---
+
 ## Context Management
 
 Context is your most precious resource. Manage it like memory.
@@ -263,6 +309,7 @@ Phase 3: 3-4 rounds of contradiction/gap finding             (both, one issue at
 Phase 4: AI rewrites for clarity, you review diffs           (AI drafts, you verify)
 Phase 5: Implementation plan with steps + success criteria   (AI drafts, you review)
 Phase 6: Execute one step at a time                          (AI codes, you review every line)
+Phase 7: Skillify stable workflows into ~/.claude/skills/    (OPTIONAL, most projects skip)
 ```
 
 ## Anti-Patterns
