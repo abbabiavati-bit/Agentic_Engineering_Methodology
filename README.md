@@ -4,6 +4,19 @@ A structured, human-led methodology for planning and executing software projects
 
 The core principle: **planning takes 2-3x longer than implementation — by design.** This is not overhead. This is where the leverage comes from.
 
+## Who Is This For?
+
+| If you are... | This helps you... |
+|---------------|-------------------|
+| A **developer** using Claude Code, Cursor, or Copilot | Stop vibe coding. Ship production-quality work with AI leverage and your name on it. |
+| An **engineering lead or CTO** | Give your team a shared standard for AI-assisted development before the shortcuts become technical debt. |
+| A **freelancer or consultant** | Deliver faster without quality loss. A methodology you can explain to clients builds trust. |
+| A **startup founder** building with AI | Move fast without the slop. The plan is the leverage — not skipping it. |
+| A **student or career changer** | Learn the right habits from the start. AI coding without methodology produces unmaintainable code. |
+| **Anyone burned by vibe coding** | This is the antidote. Same AI, structured process, reviewable output. |
+
+> If you can't read the diff, you can't verify the step. This methodology assumes you're the expert — AI is your force multiplier, not your replacement.
+
 ## The Spectrum
 
 Not all AI-assisted coding is the same. Know which mode you're in:
