@@ -23,6 +23,7 @@ As Karpathy puts it: *"A tight leash on an over-eager junior intern savant with 
 | Phase | Time | What happens |
 |-------|------|--------------|
 | Phases 1-4 | ~50% | Project plan — objective, research, refinement, rewrite |
+| Phase 4.5 (optional) | 0-15% | Visual design — UI mockups before implementation (UI projects only) |
 | Phase 5 | ~25% | Implementation plan — ordering, steps, verification criteria |
 | Phase 6 | ~25% | Execution — one step at a time, review every line |
 | Phase 7 | ~0-10% | Skillify stable workflows (optional — most projects skip this) |
@@ -73,6 +74,29 @@ This research doc is the AI's "memory" for the rest of the process. Instead of r
 
 If your tool supports it (Claude Code does), delegate research to subagents. They explore in a separate context and report back a summary, keeping your main context clean for the actual planning work. Codebase exploration is the single biggest token consumer — don't let it pollute your working context.
 
+Subagents aren't just for Phase 2. Use them any time a task would take 3+ tool calls to research or execute:
+
+| Use case | How |
+|----------|-----|
+| Codebase exploration | Spawn an Explore subagent |
+| Independent code review | Fresh context agent reads the diff with no authorship bias |
+| Parallel implementation steps | Two non-dependent steps run simultaneously |
+| QA / test execution | Separate agent runs tests and reports back |
+
+### CLAUDE.md — Persistent Context Across Sessions
+
+The research document is the AI's memory for the project — but only if it's available at the start of every session. Wire it in permanently with `CLAUDE.md`:
+
+```
+## Research
+See RESEARCH.md — read this before doing anything.
+
+## Plan
+See PLAN.md — current implementation state is at the top.
+```
+
+Claude Code automatically reads `CLAUDE.md` at the start of every session in that directory. You never have to manually re-provide context — the AI starts each session already oriented. This is one of the highest-leverage things you can do to improve first-pass quality.
+
 ### Version control from here
 
 Initialize git tracking on your plan document now. Every subsequent edit shows up as a diff, which is far faster to review than re-reading the whole thing.
@@ -110,6 +134,10 @@ During refinement, when a technical decision comes up, don't ask for code. Ask f
 
 As Karpathy notes: *"There's almost always a few ways to do things and the LLM's judgement is not always great."* You pick the approach. The AI presents the tradeoffs.
 
+### Use extended thinking for hard problems
+
+When you're stuck on a genuinely complex decision — architectural choices, dependency ordering, subtle tradeoffs — tell the AI to think carefully before responding. Claude 4.7's adaptive thinking will automatically allocate more reasoning tokens to hard problems. Phase 3 and Phase 5 are where this earns its cost most.
+
 ### The LLM council
 
 When stuck on a critical decision, ask multiple models the same question. Different models have different blind spots. Karpathy: *"I often pay for several models and ask them the same question, treating them as my personal 'LLM council.'"*
@@ -143,6 +171,36 @@ Before leaving this phase, add a "Definition of Done" section near the objective
 - How do you know it's **shipped**, not just "code complete"?
 
 Karpathy's framing: *"Demo is works.any(), product is works.all()"* — getting a demo working is trivial. Your Definition of Done should describe the product, not the demo.
+
+---
+
+## Phase 4.5 (Optional) — Visual Design
+
+**Who writes:** Claude, guided by you.
+
+If your project has a UI, design it visually before writing the implementation plan. Designing after the code exists locks you into technical constraints. Designing before means Phase 5 can describe exactly what to build.
+
+**When to use this phase:**
+- The project involves any user-facing interface
+- Stakeholders need to approve a layout before development starts
+- The interaction model or visual hierarchy is undecided
+
+**When to skip it:**
+- Backend-only, CLI, or data pipeline projects
+- The UI is trivial or already defined by an existing design system
+
+### How to run it
+
+1. In Claude Code, invoke `/frontend-design` and describe what you need:
+   > "Design a [description] interface. Dark theme. Prioritise [key requirement]. Key sections: [list them]."
+2. Claude generates rendered HTML/CSS — a live mockup you can open in a browser
+3. Iterate conversationally: "Move navigation to the left sidebar", "Make the table sortable", "Add a status bar at the top"
+4. Screenshot the approved design and add it to your plan as a visual reference
+5. Reference screenshots in Phase 5 step descriptions: "Build the dashboard matching visual-spec.png"
+
+**Claude's design output is similar to a lightweight Figma** — rendered, interactive mockups without leaving your terminal. No design tool licence required.
+
+**This phase produces reference, not production code.** The generated HTML is a visual spec. The implementation plan (Phase 5) is still where you define how it gets built properly.
 
 ---
 
@@ -206,10 +264,25 @@ For each step:
 1. **Instruct:** "Complete step N of this plan. Just step N, complete it to its entirety. Keep going until it meets the success criteria."
 2. **Wait:** Let the AI run to completion — this can take 20-30 minutes per step. Don't interrupt.
 3. **Review:** Read every line of code that changed. Use `git diff`. Expect bloated code, excessive try/catch, redundant logic, poor aesthetics. This is normal — LLMs overcomplicate. Clean it up or ask the AI to simplify.
-4. **Verify:** Run the success criteria — both automated and manual. Focus on **correctness**, not just "does it run." Silent failures (code runs but produces wrong results) are the most dangerous category.
+4. **Verify:** Run the success criteria — see the verification hierarchy below.
 5. **Commit:** `git commit` after verified. This is your checkpoint.
 6. **Update:** Update the "Current State" block in the plan.
 7. **Next:** Move to step N+1.
+
+### Verification hierarchy
+
+Not all verification is equal. Apply in order before marking any step complete:
+
+1. **Automated** — tests pass, lint clean, types check. The AI handles this.
+2. **Logical** — does the output match the success criteria exactly? Read the diff; don't just run it.
+3. **Behavioural** — load the URL, call the endpoint, open the file. Confirm actual behaviour, not just code structure.
+4. **Semantic** — step back: does this step move the project toward the Definition of Done, or does it solve the wrong problem well?
+
+If step 3 or 4 fails, do not move on. Silent failures — code that runs but produces wrong results — are the most expensive bugs to find later.
+
+### Confidence thresholds
+
+When the AI hedges ("this might work", "I think", "probably"), treat it as a signal. Ask: "How confident are you? What could go wrong?" If the AI's own confidence is low, stop and re-examine the approach before committing. Don't let optimism carry you past a weak foundation.
 
 ### When things go wrong
 
@@ -284,6 +357,36 @@ Context is your most precious resource. Manage it like memory.
 
 ---
 
+## Claude 4.7 & Modern Tooling
+
+### Adaptive Thinking
+
+Claude Opus 4.7 introduces *adaptive thinking*: instead of a fixed reasoning budget, the model dynamically allocates thinking tokens based on task complexity. For agentic engineering:
+
+- **Use it on hard planning problems.** Phase 3 (contradiction finding) and Phase 5 (implementation ordering) benefit most — complex dependency analysis and subtle tradeoffs are where the extra reasoning earns its cost.
+- **Don't force it on simple steps.** Routine execution in Phase 6 doesn't need deep reasoning. The model calibrates automatically.
+- **128k output, 1M context.** Long research documents (Phase 2) and large codebases no longer require aggressive summarisation to fit context.
+
+### MCP Servers — External Tool Integration
+
+MCP (Model Context Protocol) servers let Claude call external tools — databases, APIs, internal services — natively during execution. Relevant to Phase 6:
+
+- If your project integrates an external API, consider an MCP server rather than a brittle one-off wrapper
+- Claude Code ships with built-in MCP servers; add custom ones in `.claude/settings.json`
+- MCP Tool Search lazy-loads servers — only tools you actually invoke consume context (up to 95% context reduction vs loading all tools upfront)
+
+### Hooks — Automated Behaviours
+
+Claude Code hooks let you wire shell commands to events: before a tool runs, after the agent stops, on file save. Use them to enforce guardrails without relying on prompt instructions:
+
+- Run your linter automatically after every edit
+- Block commits that fail tests
+- Post a Slack message when a long execution step completes
+
+Hooks are configured in `.claude/settings.json`. Unlike prompt instructions, hooks execute at the harness level — the AI cannot bypass them.
+
+---
+
 ## What LLMs Get Wrong (Expect This)
 
 These aren't bugs — they're predictable failure modes. Plan for them:
@@ -303,13 +406,14 @@ These aren't bugs — they're predictable failure modes. Plan for them:
 ## Quick Reference
 
 ```
-Phase 1: Write objective + non-goals + key bullets           (YOU, no AI)
-Phase 2: AI produces research document                       (AI, 2-5k lines)
-Phase 3: 3-4 rounds of contradiction/gap finding             (both, one issue at a time)
-Phase 4: AI rewrites for clarity, you review diffs           (AI drafts, you verify)
-Phase 5: Implementation plan with steps + success criteria   (AI drafts, you review)
-Phase 6: Execute one step at a time                          (AI codes, you review every line)
-Phase 7: Skillify stable workflows into ~/.claude/skills/    (OPTIONAL, most projects skip)
+Phase 1:   Write objective + non-goals + key bullets                (YOU, no AI)
+Phase 2:   AI produces research document + set up CLAUDE.md         (AI, 2-5k lines)
+Phase 3:   3-4 rounds of contradiction/gap finding                  (both, one issue at a time)
+Phase 4:   AI rewrites for clarity, you review diffs                (AI drafts, you verify)
+Phase 4.5: Claude generates UI mockups, you iterate (OPTIONAL)      (AI renders, you approve)
+Phase 5:   Implementation plan with steps + success criteria        (AI drafts, you review)
+Phase 6:   Execute one step at a time, verify hierarchy             (AI codes, you review every line)
+Phase 7:   Skillify stable workflows into ~/.claude/skills/         (OPTIONAL, most projects skip)
 ```
 
 ## Anti-Patterns
@@ -329,6 +433,9 @@ Phase 7: Skillify stable workflows into ~/.claude/skills/    (OPTIONAL, most pro
 | Let the AI explore the codebase freely | Scope investigations, use subagents |
 | Ask "how should I do this?" | Ask for 2-3 approaches with pros/cons |
 | Frame verification as instructions | Frame as success criteria (declarative) |
+| Skip CLAUDE.md setup | Wire in persistent context from Phase 2 |
+| Design UI after writing implementation code | Use Phase 4.5 to lock the visual spec first |
+| Ignore AI hedging ("I think", "probably") | Treat as a confidence signal — stop and examine |
 
 ---
 
@@ -344,4 +451,4 @@ The methodology mitigates this by front-loading decisions into the plan (where y
 
 ---
 
-*Based on practitioner experience, refined with insights from Andrej Karpathy (who coined "vibe coding" and later proposed "agentic engineering"), Addy Osmani, and the AI-assisted development community.*
+*Based on practitioner experience, refined with insights from Andrej Karpathy (who coined "vibe coding" and later proposed "agentic engineering"), Addy Osmani, and the AI-assisted development community. Updated April 2026 to reflect Claude 4.7 adaptive thinking, MCP tooling, and visual design workflows.*
