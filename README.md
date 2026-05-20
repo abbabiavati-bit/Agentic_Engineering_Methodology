@@ -60,6 +60,7 @@ Use the same phases for every project, but emphasize different evidence dependin
 | **Agent or chatbot** | User tasks, tool access, decision boundaries, failure modes, privacy, logs, evaluation cases | Agent boundary, tool contracts, conversation examples, escalation paths | Representative tasks pass, tool calls are logged, unsafe requests fail safely, handoff works |
 | **Process automation** | Current manual workflow, triggers, inputs, exceptions, approvals, ownership, audit needs | Process map, trigger rules, eligibility rules, retry/stop conditions, notification path | Happy path and failure path work, idempotency holds, audit trail exists, humans can intervene |
 | **Data or reporting workflow** | Source systems, schemas, freshness, reconciliation rules, sample data, consumers | Data contract, transformations, report mockup, quality checks, ownership | Numbers reconcile, stale/missing data is detected, sample outputs match expectations |
+| **Knowledge / company brain system** | Source inventory, trust tiers, permissions, freshness, citations, retrieval quality, operating ownership | Source taxonomy, permission model, retrieval architecture, answer policy, evaluation plan | Permission fidelity holds, citations are correct, freshness is acceptable, retrieval quality supports real tasks |
 | **Marketplace or platform ecosystem** | Distinct actor groups, supply/demand mechanics, pricing, trust and safety, search/ranking, identity, support, abuse, regional constraints | Service blueprint, actor journeys, marketplace rules, trust model, escalation and support paths | Each actor can complete their workflow, policy boundaries hold, marketplace mechanics behave as intended, abuse paths are covered |
 | **Complex system or enterprise platform** | Architecture, service boundaries, permissions, integrations, migrations, operational constraints, support path, scale bottlenecks | Architecture sketch, domain map, rollout plan, runbook, rollback strategy, dependency graph | Critical paths work, permissions are enforced, observability exists, failure isolation works, rollback is rehearsed |
 
@@ -383,6 +384,7 @@ Before writing a full plan, classify the task:
 | Small, low-risk, isolated change | Use the Lightweight Workflow |
 | Cross-file feature, unclear bug, production code, client work | Use the full methodology |
 | Auth, billing, permissions, migrations, legal/compliance, external systems | Full methodology plus explicit guardrails and review escalation |
+| Knowledge fragmentation is slowing delivery, onboarding, support, or internal AI | Use the full methodology and evaluate the company-brain path |
 | Novel architecture or off-distribution work | Hand-code the core; use AI for research, review, tests, and boilerplate |
 
 Write down:
@@ -395,6 +397,16 @@ Write down:
 6. **GitHub operating model** — repo topology, ownership, review gates, and deployment path.
 7. **Architecture guardrails** — applicable ADRs, contracts, standards, and merge gates for this task.
 8. **Methodology maturity target** — individual, team, multi-team, or organization-wide baseline expected for this work.
+
+If knowledge is a bottleneck, ask explicitly:
+
+1. Are important answers spread across several systems?
+2. Do people repeatedly ask the same policy, product, or operational questions?
+3. Do onboarding, support, or engineering workflows lose time because knowledge is hard to retrieve?
+4. Do copilots, automations, or agents need grounded internal context?
+5. Are source ownership and permissions mature enough to support retrieval safely?
+
+If the answer is "yes" to the first four and at least "mostly yes" to the fifth, the methodology should recommend the company-brain path.
 
 If the task grows during execution, promote it to the full methodology. Do not let a "quick fix" quietly become a migration, architecture change, or production agent.
 
@@ -475,6 +487,7 @@ Research scope depends on the project:
 | Agent behaviour | Tasks, allowed tools, prohibited actions, human handoff, logs, eval examples, safety boundaries |
 | Automation | Current manual process, triggers, inputs, owners, exceptions, retry rules, audit requirements |
 | Data/reporting | Source systems, schemas, sample data, freshness, reconciliation rules, downstream consumers |
+| Knowledge / company brain | Source inventory, source owners, trust tiers, freshness policies, permission model, retrieval options, answer policy, evaluation plan |
 | Business process | Stakeholders, approvals, legal/compliance limits, customer impact, operational support path |
 | External integrations | Auth, rate limits, API docs, sandbox/prod differences, failure responses, revocation path |
 
@@ -680,6 +693,7 @@ Produce the smallest artifact that removes ambiguity:
 | Agent or chatbot | Conversation examples, tool-call contract, escalation tree, refusal/fallback examples |
 | Process automation | Process map, trigger/input rules, approval points, retry and stop conditions |
 | Data/reporting | Target table/schema, report mockup, reconciliation examples, freshness rules |
+| Knowledge / company brain | Source taxonomy, trust model, permission map, retrieval architecture, citation policy, evaluation plan |
 | Marketplace or platform ecosystem | Actor journeys, service blueprint, trust/safety flows, support and dispute flows |
 | Complex system or enterprise platform | Architecture sketch, domain map, dependency graph, operator runbook, rollout sequence |
 
@@ -720,6 +734,7 @@ Add the relevant checklist to the implementation plan:
 | **Agent or chatbot** | Boundary, tool schema, prompt/policy files, memory/state, eval set, logs, fallback/handoff, abuse cases, cost/latency budget |
 | **Process automation** | Trigger, input queue, eligibility rules, idempotency, retries, stop conditions, notifications, audit log, manual override |
 | **Data/reporting** | Source extraction, transformations, schema checks, freshness checks, reconciliation, sample outputs, ownership, backfill strategy |
+| **Knowledge / company brain** | Source onboarding, metadata and chunking model, trust tiers, permission enforcement, freshness policy, citation behavior, retrieval/reranking strategy, evals, operating ownership |
 | **Marketplace or platform ecosystem** | Actor-specific workflows, supply/demand rules, ranking/search assumptions, payments, trust/safety, support tooling, fraud/abuse paths, regional policy differences |
 | **Complex system or enterprise platform** | Architecture, domain boundaries, permissions, migrations, feature flags, observability, support runbook, dependency management, rollback, staged rollout |
 
@@ -1401,8 +1416,10 @@ Phase 7:   Skillify stable workflows into ~/.claude/skills/         (OPTIONAL, m
 | Rely on auto-compaction to preserve intent | Add compact instructions and handoff summaries |
 | Add MCP servers because they are available | Connect MCP only when live structured access beats copied context |
 | Give MCP broad write access on day one | Start read-only, minimize tools, and add audited writes deliberately |
+| Index every source before defining trust tiers | Define source classes, trust levels, freshness, and permissions first |
 | Give broad repo admin access to everyone shipping code | Keep admin rights narrow; use teams, CODEOWNERS, rulesets, and environments for normal work |
 | Ship an agent without logs or evals | Define observability and regression cases before deployment |
+| Treat Slack, email, or chat as canonical policy by default | Prefer governed source systems and label lower-trust conversational sources clearly |
 | Use one status-check stack for every change | Apply gates by change type and risk, not by habit |
 | Measure AI adoption by generated-code percentage | Measure onboarding time, PR cycle time, quality, reliability, and customer outcomes |
 | Keep legacy meetings and reviews by default | Audit noisy workflows; kill, automate, or simplify them |
@@ -1415,6 +1432,7 @@ Phase 7:   Skillify stable workflows into ~/.claude/skills/         (OPTIONAL, m
 | Put important safety rules only in prompts | Enforce deterministic rules with fast blocking hooks |
 | Make every hook synchronous and expensive | Keep blocking hooks fast; run slow side effects async or at review gates |
 | Store all deployment secrets at repository scope | Use environment-specific secrets and reviewers for sensitive deploys |
+| Ship a company brain without retrieval evals, citation checks, or permission tests | Validate relevance, grounding, freshness, and access control before rollout |
 | Treat lightweight workflow as permission to skip planning | Keep exploration and planning before code, even in one session |
 | Call work done after local tests only | Run final review, behavioural proof, and post-ship checks |
 
