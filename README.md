@@ -65,7 +65,7 @@ Use the same phases for every project, but emphasize different evidence dependin
 
 If a project crosses archetypes, use the stricter checklist for each relevant part. For example, a customer-facing support agent is both an agent and a product UI; it needs conversation evals, tool logs, UX fallbacks, analytics, and support handoff.
 
-For large products such as Amazon or Airbnb, do not treat the whole company as one implementation plan. Decompose it into bounded surfaces and systems:
+For large-scale multi-domain platforms, do not treat the whole system as one implementation plan. Decompose it into bounded surfaces and systems:
 
 1. **User-facing surfaces** — buyer, seller, guest, host, admin, support, mobile app, web app, API.
 2. **Core platform systems** — identity, payments, search, ranking, inventory, messaging, notifications, trust and safety.
@@ -73,6 +73,64 @@ For large products such as Amazon or Airbnb, do not treat the whole company as o
 4. **Data and intelligence** — analytics, recommendations, forecasting, experimentation, reporting.
 
 The methodology still applies, but the planning artifact changes from "one feature plan" to a portfolio of linked plans with explicit boundaries, dependencies, and ownership.
+
+### Planning levels for large work
+
+Do not use one document to plan every level of work. Large initiatives need different artifacts at different levels:
+
+| Level | Purpose | Typical artifact |
+|-------|---------|------------------|
+| **Portfolio** | Decide which initiatives deserve funding, sequence, and executive attention | Roadmap, investment thesis, quarterly plan |
+| **Program / initiative** | Define the end-to-end outcome across teams or systems | Initiative brief, program plan, dependency map |
+| **Workstream / domain** | Define one bounded slice owned by one team or domain | Domain plan, service plan, rollout plan |
+| **Execution step** | Complete one reviewable unit of work safely | Step in `PLAN.md`, issue, PR, runbook task |
+
+Rules:
+
+1. **One owner per level.** Shared accountability usually means no accountability.
+2. **One artifact per decision.** If the decision is architecture, write an ADR. If it is rollout, write a rollout plan. If it is execution, write a step.
+3. **Escalate upward only when needed.** Do not send step-level questions to the portfolio layer.
+4. **Decompose before execution.** If one plan has too many teams, systems, or milestones to reason about, split it.
+
+For large-scale multi-domain platform work, the methodology should produce a stack of linked artifacts, not one giant master document.
+
+### Minimal artifact templates
+
+The methodology becomes easier to run at team scale when key artifacts share a stable shape.
+
+Use these minimum fields:
+
+| Artifact | Minimum fields |
+|----------|----------------|
+| **Initiative brief** | Objective, owner, users/stakeholders, scope, non-goals, success metrics, dependencies, major risks |
+| **Workstream plan** | Owner, bounded scope, interfaces/contracts, dependencies, milestones, quality gates, rollout path |
+| **ADR** | Decision, context, options considered, chosen approach, consequences, owner, date |
+| **Execution step** | Current step, files/systems affected, success criteria, checks, required reviewers, rollback note |
+| **Release note / rollout plan** | Change summary, environments, approvals, feature flags, rollback, observation checks |
+| **Post-ship review** | What changed, expected outcome, actual outcome, incidents/findings, follow-up actions, owner |
+
+Templates are not ceremony. They reduce drift, speed up review, and make AI-generated artifacts easier to evaluate.
+
+### Lifecycle states
+
+Every initiative, workstream, or execution step should have an explicit state. This prevents hidden work, half-approved work, and "almost done" work that nobody can classify.
+
+Recommended states:
+
+| State | Meaning |
+|-------|---------|
+| **Intake** | The work exists as an idea, request, bug, or obligation, but is not yet accepted |
+| **Ready** | Definition of Ready is met and the work may start |
+| **In planning** | Research, design, architecture, or dependency clarification is underway |
+| **Ready for execution** | Plan, guardrails, acceptance target, and merge/deploy gates are in place |
+| **In execution** | Implementation is actively happening |
+| **In review** | Evidence exists and merge/deploy review is underway |
+| **Released** | The change has shipped or been handed off |
+| **Observed** | Post-ship monitoring, validation, and follow-up are active |
+| **Closed** | Done, learned from, and no further action is expected |
+| **Sunset / decommissioned** | The system or workflow has been intentionally retired |
+
+The state model matters because different artifacts and approvals belong to different stages. Teams should not improvise that boundary in chat.
 
 ## GitHub Operating Model
 
@@ -103,7 +161,7 @@ Professional rule:
 
 - Use a **monorepo** only if you are prepared to invest in build tooling, test selection, ownership boundaries, and consistent standards.
 - Use **multi-repo** when independent release and permission boundaries are more important than cross-repo refactoring speed.
-- For products at Amazon/Airbnb scale on GitHub, default to **an organization with domain-owned repositories or bounded monorepos**, not one giant repo by default.
+- For large-scale multi-domain platforms on GitHub, default to **an organization with domain-owned repositories or bounded monorepos**, not one giant repo by default.
 
 ### GitHub structure by product type
 
@@ -159,6 +217,61 @@ Recommended `.github/` skeleton:
     deploy.yml
 ```
 
+### Architecture and standards model
+
+Professional teams do not rely on reviewer memory to preserve architecture. They define standards as versioned artifacts and enforce them with ownership and automation.
+
+Set up:
+
+1. **Architecture decision records** for meaningful structural choices such as repo topology, service boundaries, data ownership, integration style, and deployment model.
+2. **Definition of Ready** for work intake. Code should not start until the task has scope, owner, acceptance criteria, dependencies, and risk classification.
+3. **Definition of Done** for merge and release. A change is not done because code exists; it is done when quality gates, docs, and deployment evidence pass.
+4. **Contract-first boundaries** where they matter: API schemas, event contracts, data contracts, interface definitions, and policy files.
+5. **Path-based standards** for high-risk directories such as auth, billing, infra, migrations, prompts, workflows, and security-sensitive code.
+6. **Versioned engineering standards** in the repo: naming, testing expectations, dependency policy, logging, observability, and rollback expectations.
+
+Recommended standards surface:
+
+```text
+docs/
+  architecture/
+    adr/
+  standards/
+    testing.md
+    api-contracts.md
+    observability.md
+    dependency-policy.md
+```
+
+### Merge admission model
+
+The team should be able to answer one simple question before merge: why is this change allowed to exist?
+
+At minimum, require:
+
+1. **A linked work item** — issue, task, bug, incident, or approved initiative.
+2. **A defined spec or acceptance target** — acceptance criteria, contract update, design artifact, or ADR when the change is structural.
+3. **Evidence of validation** — tests, screenshots, logs, reports, or deployment proof appropriate to the change type.
+4. **Ownership approval** — code owner or delegated owner for affected paths.
+5. **No unresolved architectural drift** — if the change conflicts with stated boundaries or standards, either reject it or update the architecture artifact deliberately.
+
+If a team cannot explain what artifact authorized the change, review it, and proved it, the process is not professional yet.
+
+### Quality gates by change type
+
+Not every change needs the same checks, but every change needs the right checks.
+
+| Change type | Minimum gate before merge |
+|-------------|---------------------------|
+| **UI or product feature** | Tests, screenshots or behavioural proof, accessibility check where relevant, owner review |
+| **API or integration** | Contract validation, compatibility check, failure-path coverage, owner review |
+| **Data or migration** | Migration plan, rollback path, fixture or staging proof, owner review, deploy control |
+| **Infra or deployment** | Environment validation, rollback path, security review where needed, deploy approval |
+| **Agent or automation** | Eval or scenario coverage, bounded permissions, logs/artifacts, stop conditions, owner review |
+| **Security-sensitive paths** | Explicit reviewer set, code scanning or policy checks, documented risk review |
+
+The rule is not "more checks everywhere." The rule is "the right gate for the actual risk."
+
 ### Merge and review controls
 
 Use GitHub rulesets or branch protections as policy, not as documentation.
@@ -172,6 +285,7 @@ Baseline for any shared production repo:
 5. **Use linear history when revertability matters.**
 6. **Restrict bypass to explicit roles, teams, or apps.**
 7. **Expose rules visibly.** People should be able to see which rules apply without needing admin access.
+8. **Map status checks to standards.** Every required check should correspond to a written standard, contract, or release rule.
 
 For higher-risk repos, add:
 
@@ -179,6 +293,7 @@ For higher-risk repos, add:
 2. **Required code scanning results** for languages and surfaces where static analysis is meaningful.
 3. **Required signed commits** if your compliance or provenance model needs it.
 4. **Path restrictions** for generated files, release artifacts, or sensitive directories.
+5. **Required architectural approval** when a change touches protected domains, core contracts, or foundational workflow logic.
 
 ### Deployment and environment model
 
@@ -278,6 +393,8 @@ Write down:
 4. **Human review boundary** — what the AI may do alone vs. what must be reviewed manually.
 5. **Environment assumption** — local, cloud VM, remote control, CI, or production-adjacent.
 6. **GitHub operating model** — repo topology, ownership, review gates, and deployment path.
+7. **Architecture guardrails** — applicable ADRs, contracts, standards, and merge gates for this task.
+8. **Methodology maturity target** — individual, team, multi-team, or organization-wide baseline expected for this work.
 
 If the task grows during execution, promote it to the full methodology. Do not let a "quick fix" quietly become a migration, architecture change, or production agent.
 
@@ -310,12 +427,15 @@ Write a text document with:
 1. **Title** — what you're building or changing
 2. **Objective** — 2-3 lines on what you actually want to achieve and why
 3. **Primary user or stakeholder** — who benefits, approves, operates, or is affected
-4. **Deliverable type** — website, app feature, internal tool, external product, agent, automation, report, integration, migration, platform capability, research artifact, or other
-5. **Definition of Done draft** — what must be visibly true when the work is complete
-6. **Non-goals** — what is explicitly out of scope
-7. **Constraints** — deadline, budget, tech stack, permissions, data access, brand rules, compliance, backwards compatibility
-8. **Key bullet points** — 5-10 high-level things that need to happen, straight from your head
-9. **Initial risk level** — low, medium, high, or critical
+4. **Planning level** — portfolio, initiative, workstream, or execution step
+5. **Deliverable type** — website, app feature, internal tool, external product, agent, automation, report, integration, migration, platform capability, research artifact, or other
+6. **Owner** — the human responsible for final decisions at this level
+7. **Definition of Done draft** — what must be visibly true when the work is complete
+8. **Non-goals** — what is explicitly out of scope
+9. **Constraints** — deadline, budget, tech stack, permissions, data access, brand rules, compliance, backwards compatibility
+10. **Key bullet points** — 5-10 high-level things that need to happen, straight from your head
+11. **Initial risk level** — low, medium, high, or critical
+12. **Acceptance artifact** — issue, spec, contract, design, ADR, or runbook that authorizes the work
 
 This is your thinking, unfiltered. You need to own the vision before anything else touches it.
 
@@ -343,6 +463,7 @@ Tell the AI to read all relevant parts of the project and produce a comprehensiv
 - This document can be long — 2,000-5,000 lines is normal for complex projects
 - It should cover: existing architecture, relevant files, API contracts, data models, workflows, dependencies, constraints, users, failure modes, and source-of-truth documents
 - **Include external dependencies** — API keys needed, access to grant, third-party services to test, other people's work that must land first
+- **Include controlling artifacts** — ADRs, standards, contracts, policy files, quality gates, and protected paths that constrain implementation
 
 This research doc is the AI's "memory" for the rest of the process. Instead of re-reading the codebase every time, you point it here.
 
@@ -441,6 +562,8 @@ Add or verify:
 6. **Rollback path** — git branch, worktree, backup, migration rollback, feature flag, or kill switch.
 7. **Observation path** — logs, traces, screenshots, PR links, or artifacts that prove what happened.
 8. **GitHub controls** — rulesets, `CODEOWNERS`, issue/PR templates, environments, deployment reviewers, and security features match the risk level.
+9. **Architecture enforcement** — required checks, protected paths, ADR review triggers, contract tests, and policy checks are wired into the repo.
+10. **Exception path** — who may approve temporary bypasses, how they are recorded, and when they expire.
 
 The rule: instructions guide behaviour; harness controls behaviour. If failure would be expensive, use the harness.
 
@@ -516,6 +639,18 @@ Before leaving this phase, add a "Definition of Done" section near the objective
 
 Karpathy's framing: *"Demo is works.any(), product is works.all()"* — getting a demo working is trivial. Your Definition of Done should describe the product, not the demo.
 
+### Add the Definition of Ready
+
+Before leaving planning, add a short "Definition of Ready" section too:
+
+- What approved artifact authorizes the change?
+- Which contracts, standards, or ADRs constrain implementation?
+- Which owners must review it?
+- Which quality gates must pass before merge?
+- What evidence must exist before deployment or handoff?
+
+This is how teams stop low-spec work from quietly turning into merged code.
+
 ---
 
 ## Phase 4.5 (Optional) — Artifact and Experience Design
@@ -567,6 +702,8 @@ Only start this after the project plan is locked down. This is a separate sectio
    - Which verifications the AI can do itself (tests pass, lint clean) vs. which are manual (check the database, load the URL, confirm the numbers)
 
 Each step should produce or change one reviewable artifact: code diff, config change, migration, prompt, runbook, test fixture, report sample, screenshot, workflow rule, or deployment artifact. If a step cannot be reviewed, split it.
+
+For structural work, require the plan to name the controlling artifact explicitly: ADR, contract, migration spec, API schema, environment rule, or policy file.
 
 ### Declarative over imperative
 
@@ -708,6 +845,8 @@ Confirm:
 6. **GitHub governance is active** — rulesets, ownership, templates, environments, and deployment approvals are in place for the target repo.
 7. **Verification is concrete** — commands, manual checks, screenshots, endpoints, fixtures, or review artifacts are named.
 8. **Rollback exists** — branch, checkpoint, backup, migration rollback, feature flag, or explicit abort criterion.
+9. **Merge admission is defined** — linked work item, acceptance artifact, required owners, and required evidence are all clear.
+10. **Adoption bundle exists** — the repo template, planning pack, guardrails, and AI guidance needed for this work are available or explicitly waived.
 
 If any item is vague, stop and improve the plan. Readiness gates are cheaper than debugging an agent that started from bad assumptions.
 
@@ -819,6 +958,12 @@ After all implementation steps pass their local success criteria, do a final int
 7. **Post-ship check** — verify production/staging state, monitor logs, and record follow-up work.
 
 For critical systems, add a recurring post-ship review path: scheduled security checks, documented dismissals, and a clear route from new finding to reviewed remediation.
+
+If the work changes ownership or replaces an older system, do not stop at release. Add:
+
+1. **Ownership handoff** — who operates it now, where the runbook lives, and who handles incidents.
+2. **Sunset plan** — what old path, script, workflow, service, or manual process is being retired.
+3. **Decommission checks** — data retention, access removal, dependency cleanup, alert cleanup, and documentation updates.
 
 If the final review finds a structural issue, go back to Phase 3 or Phase 5. Do not patch around a broken plan at the finish line.
 
@@ -947,6 +1092,97 @@ For teams adopting this methodology:
 7. **Avoid vanity metrics.** "Percent of code written by AI" is not the goal. Track whether onboarding is faster, PR cycle time is shorter, quality is stable, reliability is protected, and customers are better served.
 
 Do not preserve old process just because it used to be load-bearing. Many software rituals were designed for a world where implementation was the expensive part. In agentic engineering, the expensive part is knowing whether the generated work is correct, safe, maintainable, and worth shipping.
+
+### Decision rights
+
+Professional teams move faster when decision rights are explicit.
+
+Define:
+
+1. **Product owner** — approves scope, priority, and user-facing tradeoffs.
+2. **Technical owner** — approves architecture, standards, contracts, and implementation direction.
+3. **Service or domain owner** — approves changes affecting a bounded system, API, or operational workflow.
+4. **Release owner** — approves timing, environment readiness, and rollback posture.
+5. **Security / compliance owner** — approves exceptions on high-risk paths where required.
+
+The point is not bureaucracy. The point is to remove ambiguity about who can say "yes," who can say "not yet," and who must be consulted before merge or deploy.
+
+### Operating cadence
+
+Methodology needs rhythm, not just documents. For teams, set a cadence that keeps plans current and catches drift early:
+
+1. **Intake cadence** — new work is classified, scoped, and accepted or rejected.
+2. **Planning cadence** — initiative and workstream plans are refined, dependencies updated, and blockers surfaced.
+3. **Execution cadence** — current-state blocks, PR flow, and review queues stay current daily.
+4. **Release cadence** — environments, deployment approvals, release notes, and rollback readiness are reviewed before ship windows.
+5. **Learning cadence** — incidents, false positives, rollout failures, and prompt or workflow failures feed back into standards and automation.
+
+If the documents are static but the system keeps changing, the methodology has already drifted out of date.
+
+### Methodology scorecard
+
+Teams should measure whether the methodology improves delivery, not just whether it produces more artifacts.
+
+Track a small scorecard:
+
+1. **Flow** — PR lead time, time to merge, time from intake to ready, time from ready to ship.
+2. **Quality** — change failure rate, rollback rate, escaped defects, open security findings, review rework rate.
+3. **Review health** — review turnaround time, stale PR count, percent of changes with required evidence attached.
+4. **Operational health** — deployment success rate, incident count after release, unresolved dependency count.
+5. **AI effectiveness** — reduction in boilerplate work, review burden trend, adoption quality, not just seat usage.
+
+If the scorecard gets worse after adopting more AI or more process, change the workflow. The point is better outcomes, not methodological purity.
+
+### Adoption maturity path
+
+Do not ask every team to jump from ad hoc work to a fully governed operating model in one move. Mature the system in stages:
+
+| Level | What is true |
+|-------|---------------|
+| **Level 1 — Individual discipline** | One person uses the methodology consistently for planning, review, and verification |
+| **Level 2 — Shared team baseline** | Repo standards, ownership, templates, CI checks, and review gates are consistent across one team |
+| **Level 3 — Multi-team operating model** | Planning levels, dependencies, scorecards, and decision rights work across teams or domains |
+| **Level 4 — Platformized methodology** | Reusable workflows, templates, guardrails, policy checks, and AI operating standards are shared organization-wide |
+
+The goal is not to "reach level 4" by force. The goal is to adopt only the amount of structure your scale and risk require, while keeping the path upward clear.
+
+### Exception and waiver model
+
+Professional systems allow exceptions, but not silent exceptions.
+
+When a team needs to bypass a rule:
+
+1. **Record the exception explicitly** — what rule is being bypassed, why, who approved it, and when it expires.
+2. **Time-box it.** Exceptions should have an owner and a review date.
+3. **Separate emergency from convenience.** Production incident response may justify short-term bypass; schedule pressure alone usually does not.
+4. **Capture compensating controls.** If one gate is skipped, note what temporary safeguard replaces it.
+5. **Review recurring exceptions.** If the same waiver happens repeatedly, the standard or tooling is probably wrong.
+
+The methodology should be strict enough to protect quality and flexible enough to handle reality. The audit trail is what makes that balance professional.
+
+### Reference operating bundle
+
+Teams adopt methodology faster when they get a concrete starting bundle instead of a philosophy document alone.
+
+A practical reference bundle includes:
+
+1. **Repo template** — baseline files, workflows, issue forms, PR template, CODEOWNERS, and docs structure.
+2. **Planning pack** — initiative brief template, workstream plan template, ADR template, rollout plan template, post-ship review template.
+3. **Guardrail pack** — rulesets, required checks, environment setup, dependency policy, secret policy, emergency-change procedure.
+4. **AI pack** — prompt packet pattern, CLAUDE.md guidance, review policy, agent permission model, eval or scenario examples.
+5. **Scorecard pack** — the small metrics set, owners, and review cadence.
+
+Without a reference bundle, teams tend to agree with the methodology in theory and reimplement it inconsistently in practice.
+
+### Dependency and escalation model
+
+Large-team work fails at the seams. Track seams explicitly:
+
+1. **Name blockers as dependencies, not surprises.**
+2. **Assign an owner and due date to every cross-team dependency.**
+3. **Escalate missing decisions early** when another team, contract, or environment blocks progress.
+4. **Separate reversible from irreversible decisions.** Debate the irreversible ones more; prototype the reversible ones faster.
+5. **Keep a short escalation path.** If a blocker sits too long, it should move to the right owner without creating a new committee.
 
 ### Enterprise rollout patterns
 
@@ -1136,6 +1372,7 @@ Phase 7:   Skillify stable workflows into ~/.claude/skills/         (OPTIONAL, m
 | Use the full methodology for every tiny change | Use Explore → Plan → Code → Verify → Commit for small, low-risk tasks |
 | Let a "quick fix" grow silently | Re-triage and promote to the full workflow when risk expands |
 | Create repos ad hoc with no ownership model | Decide repo topology, team ownership, and review gates up front |
+| Start implementation from a vague request | Require a Definition of Ready with owner, scope, acceptance target, and risk |
 | Re-read the whole document after every edit | Use git diffs |
 | Keep going past 200k tokens of context | Clear context, re-read plan, continue |
 | Hope there are no fatal flaws | Define abort criteria upfront |
@@ -1148,6 +1385,7 @@ Phase 7:   Skillify stable workflows into ~/.claude/skills/         (OPTIONAL, m
 | Frame verification as instructions | Frame as success criteria (declarative) |
 | Skip CLAUDE.md setup | Wire in persistent context from Phase 2 |
 | Treat CLAUDE.md as guaranteed enforcement | Pair critical rules with hooks, tests, CI, or review gates |
+| Let architectural rules live only in senior engineer memory | Version ADRs, standards, contracts, and protected-path rules in the repo |
 | Design the experience after implementation | Use Phase 4.5 to lock the relevant artifact first |
 | Ignore AI hedging ("I think", "probably") | Treat as a confidence signal — stop and examine |
 | Use vague one-line prompts for execution | Build a prompt packet with role, context, constraints, examples, output format |
@@ -1158,12 +1396,14 @@ Phase 7:   Skillify stable workflows into ~/.claude/skills/         (OPTIONAL, m
 | Pick a monorepo because big companies use one | Use a monorepo only when coupling, tooling, and ownership justify it |
 | Treat Claude Code like autocomplete | Manage the context-action-verification loop explicitly |
 | Ignore where the agent is running | Document local, cloud, remote, or CI environment assumptions |
+| Merge code because the diff "looks fine" | Require linked work, acceptance artifact, owner approval, and evidence |
 | Let context fill with raw logs and exploration | Summarize evidence and move durable state into files |
 | Rely on auto-compaction to preserve intent | Add compact instructions and handoff summaries |
 | Add MCP servers because they are available | Connect MCP only when live structured access beats copied context |
 | Give MCP broad write access on day one | Start read-only, minimize tools, and add audited writes deliberately |
 | Give broad repo admin access to everyone shipping code | Keep admin rights narrow; use teams, CODEOWNERS, rulesets, and environments for normal work |
 | Ship an agent without logs or evals | Define observability and regression cases before deployment |
+| Use one status-check stack for every change | Apply gates by change type and risk, not by habit |
 | Measure AI adoption by generated-code percentage | Measure onboarding time, PR cycle time, quality, reliability, and customer outcomes |
 | Keep legacy meetings and reviews by default | Audit noisy workflows; kill, automate, or simplify them |
 | Resolve every technical disagreement in meetings | Compare small prototypes or PRs when code is cheaper than debate |
