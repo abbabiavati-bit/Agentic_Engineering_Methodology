@@ -74,6 +74,176 @@ For large products such as Amazon or Airbnb, do not treat the whole company as o
 
 The methodology still applies, but the planning artifact changes from "one feature plan" to a portfolio of linked plans with explicit boundaries, dependencies, and ownership.
 
+## GitHub Operating Model
+
+GitHub setup is part of system design. Repository topology, ownership, review gates, deployment controls, and planning surfaces determine whether the project stays operable as the team and product grow.
+
+Make these decisions before implementation starts:
+
+1. **Organization model** — personal account, team org, or enterprise org.
+2. **Repository topology** — single repo, monorepo, multi-repo, or mixed model.
+3. **Ownership model** — who owns which paths, services, environments, and approvals.
+4. **Review model** — what must pass before merge, who approves, and what can bypass.
+5. **Deployment model** — what environments exist, who can deploy, and what must be reviewed.
+6. **Planning model** — issues, labels, milestones, projects, roadmaps, and intake flow.
+7. **Security model** — dependency updates, secret protection, code scanning, advisories, and audit trail.
+
+### Repository topology
+
+Choose repository shape based on coupling, release cadence, and access boundaries:
+
+| Topology | Use when | Strength | Failure mode |
+|----------|----------|----------|--------------|
+| **Single repo** | One product or one deployable owned by one team or a tightly coupled small group | Simple setup, fast onboarding, one review surface | Becomes messy when multiple services or teams need different release and permission boundaries |
+| **Monorepo** | Many packages or services change together, share tooling, and benefit from atomic cross-cutting changes | Shared standards, easier large refactors, one source of truth | Becomes slow and political without strong tooling, ownership, and path-based CI |
+| **Multi-repo** | Services or products have independent owners, release cadence, compliance boundaries, or visibility rules | Clear isolation, separate permissions, cleaner service autonomy | Dependency drift, duplicated setup, fragmented standards, cross-repo change pain |
+| **Mixed model** | A platform has a few tightly coupled repos plus many independent services or public packages | Balances shared standards with real autonomy | Confusion if boundaries are inconsistent or ownership is vague |
+
+Professional rule:
+
+- Use a **monorepo** only if you are prepared to invest in build tooling, test selection, ownership boundaries, and consistent standards.
+- Use **multi-repo** when independent release and permission boundaries are more important than cross-repo refactoring speed.
+- For products at Amazon/Airbnb scale on GitHub, default to **an organization with domain-owned repositories or bounded monorepos**, not one giant repo by default.
+
+### GitHub structure by product type
+
+| What you are building | Recommended GitHub structure |
+|-----------------------|------------------------------|
+| **Website or single app** | One repo, one delivery pipeline, one `CODEOWNERS`, one project board, staged environments |
+| **Product with web, mobile, backend, and shared packages** | Monorepo if releases and standards are tightly coupled; otherwise separate repos plus shared templates and reusable workflows |
+| **Agent or automation** | Separate repo when secrets, tools, or runtime policy differ from the host product; keep evals, prompts, policies, and runbooks versioned with the agent |
+| **Marketplace or platform** | Organization-level structure with domain repos for identity, payments, search, trust/safety, support tooling, and product surfaces |
+| **Internal and external tools on one platform** | Separate repos when access, customer impact, or release cadence differ; shared org defaults and reusable workflows |
+| **Open source product** | Public repo with stronger community health files, issue forms, security policy, release notes, and clearer contributor workflow |
+
+### Organization baseline
+
+At team scale, do not manage GitHub as a pile of ad hoc repositories. Set an org-level baseline:
+
+1. **Teams reflect ownership.** Create teams by durable domain or responsibility, not temporary projects.
+2. **Use nested teams carefully.** Parent teams should only have permissions safe for every child team.
+3. **Centralize defaults in `.github`.** Put default `CONTRIBUTING.md`, `SECURITY.md`, issue templates, PR templates, and other community health files in a public `.github` repo.
+4. **Use template repositories.** Create starter repos for your common stacks so new projects inherit structure, workflows, and docs on day one.
+5. **Standardize project intake.** Use consistent issue forms, labels, issue types, and project fields across related repos.
+6. **Separate admin from daily write access.** Keep repository admin rights narrow; use teams and code ownership for normal work.
+
+### Repository baseline
+
+Every serious repo should start with a predictable control surface:
+
+| Area | Baseline |
+|------|----------|
+| **Docs** | `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, architecture or runbook notes where appropriate |
+| **Ownership** | `CODEOWNERS` in `.github/`, with ownership for critical paths and for the `CODEOWNERS` file itself |
+| **Templates** | Issue forms in `.github/ISSUE_TEMPLATE/`, PR template in `.github/` or root |
+| **Automation** | CI workflows, reusable actions or reusable workflows, dependency update config, release workflow |
+| **Planning** | Label taxonomy, milestones if release-based, project integration for roadmap and status |
+| **Security** | Dependabot, secret scanning, push protection, code scanning where available, advisory process |
+| **Deployments** | Named environments such as `dev`, `staging`, `prod` with explicit protection rules and secrets |
+
+Recommended `.github/` skeleton:
+
+```text
+.github/
+  CODEOWNERS
+  pull_request_template.md
+  dependabot.yml
+  ISSUE_TEMPLATE/
+    bug.yml
+    feature.yml
+    task.yml
+    config.yml
+  workflows/
+    ci.yml
+    release.yml
+    deploy.yml
+```
+
+### Merge and review controls
+
+Use GitHub rulesets or branch protections as policy, not as documentation.
+
+Baseline for any shared production repo:
+
+1. **Require pull requests before merge.**
+2. **Require passing status checks.**
+3. **Require code owner review on owned paths.**
+4. **Block force pushes and deletions on protected branches.**
+5. **Use linear history when revertability matters.**
+6. **Restrict bypass to explicit roles, teams, or apps.**
+7. **Expose rules visibly.** People should be able to see which rules apply without needing admin access.
+
+For higher-risk repos, add:
+
+1. **Required deployments before merge** for critical paths that must prove staging readiness.
+2. **Required code scanning results** for languages and surfaces where static analysis is meaningful.
+3. **Required signed commits** if your compliance or provenance model needs it.
+4. **Path restrictions** for generated files, release artifacts, or sensitive directories.
+
+### Deployment and environment model
+
+GitHub environments are part of release governance, not just secret storage.
+
+Set up:
+
+1. **Named environments** with clear purpose: `dev`, `staging`, `prod`, or equivalent.
+2. **Environment-specific secrets** rather than one giant repository secret pool.
+3. **Required reviewers** for sensitive deployments.
+4. **Branch policies** so only approved branches can target sensitive environments.
+5. **Concurrency and deployment history** so overlapping deploys and rollbacks are visible.
+6. **Custom protection rules** when third-party approval or change-management systems must gate deployment.
+
+### Planning and coordination model
+
+GitHub is also the work-management layer for many teams. Use it deliberately:
+
+1. **Issue forms** for intake. Different forms for bugs, feature requests, incidents, and internal tasks.
+2. **Label taxonomy** that reflects type, domain, priority, and state. Keep it small and stable.
+3. **Projects** for team backlog, roadmap, and release tracking. Use custom fields for priority, risk, target date, and domain.
+4. **Milestones** when you ship in named releases or batches.
+5. **Issues-only or planning repos** when planning access needs to differ from source-code access.
+
+If you cannot tell from GitHub who owns work, what is blocked, what is ready, and what is shipping next, your setup is not team-grade yet.
+
+### Security and maintenance baseline
+
+Security defaults should be enabled before the repo becomes busy:
+
+1. **Dependabot alerts, security updates, and version updates** for dependencies.
+2. **Secret scanning** to detect exposed credentials already in history and across collaboration surfaces.
+3. **Push protection** to block secrets before they land in the repository.
+4. **Security policy and advisory path** so reports do not arrive through random channels.
+5. **Documented dismissal and triage rules** so security noise does not accumulate without explanation.
+
+### Monorepo realism
+
+Do not copy Google superficially. The useful lesson from Google's monorepo practice is that monorepos scale with strong source-control policy and tooling, not because one repo is inherently elegant.
+
+Use a monorepo only if all of the following are true:
+
+1. Cross-cutting changes are common and valuable.
+2. Shared tooling and standards are non-negotiable.
+3. Ownership can be expressed clearly with paths and teams.
+4. CI can test selectively and stay fast enough for daily work.
+5. The organization is willing to invest in tooling, not just folder structure.
+
+If those conditions are weak, prefer multiple repos with strong templates, shared workflows, and org-level defaults.
+
+### GitHub setup checklist for Phase 0 / 2.5
+
+Before implementation starts, record:
+
+1. **Repo topology choice** and why it fits the product.
+2. **Organization and team ownership model**.
+3. **Repository template or starter structure**.
+4. **Rulesets / branch protection policy**.
+5. **CODEOWNERS coverage**.
+6. **Issue / PR template design**.
+7. **Project, labels, milestone, and roadmap setup**.
+8. **CI, environments, deployment approvals, and release flow**.
+9. **Dependabot, secret scanning, push protection, and code scanning choices**.
+10. **Admin, bypass, and emergency-change process**.
+
 ## Phase 0 — Triage and Workflow Selection
 
 **Who writes:** You. The AI can advise, but you decide.
@@ -94,6 +264,7 @@ Write down:
 3. **Why this workflow is enough** — one sentence.
 4. **Human review boundary** — what the AI may do alone vs. what must be reviewed manually.
 5. **Environment assumption** — local, cloud VM, remote control, CI, or production-adjacent.
+6. **GitHub operating model** — repo topology, ownership, review gates, and deployment path.
 
 If the task grows during execution, promote it to the full methodology. Do not let a "quick fix" quietly become a migration, architecture change, or production agent.
 
@@ -256,6 +427,7 @@ Add or verify:
 5. **Secrets and data boundaries** — files or systems the agent must not read or mutate.
 6. **Rollback path** — git branch, worktree, backup, migration rollback, feature flag, or kill switch.
 7. **Observation path** — logs, traces, screenshots, PR links, or artifacts that prove what happened.
+8. **GitHub controls** — rulesets, `CODEOWNERS`, issue/PR templates, environments, deployment reviewers, and security features match the risk level.
 
 The rule: instructions guide behaviour; harness controls behaviour. If failure would be expensive, use the harness.
 
@@ -520,8 +692,9 @@ Confirm:
 3. **Prompt packet is ready** — role, context, current step, constraints, examples, output format, and critical reminder are present.
 4. **Environment is correct** — local/cloud/CI assumptions match the task, dependencies are installed, and required services are reachable.
 5. **Guardrails are active** — hooks, permissions, MCP scopes, CI checks, and protected files are configured.
-6. **Verification is concrete** — commands, manual checks, screenshots, endpoints, fixtures, or review artifacts are named.
-7. **Rollback exists** — branch, checkpoint, backup, migration rollback, feature flag, or explicit abort criterion.
+6. **GitHub governance is active** — rulesets, ownership, templates, environments, and deployment approvals are in place for the target repo.
+7. **Verification is concrete** — commands, manual checks, screenshots, endpoints, fixtures, or review artifacts are named.
+8. **Rollback exists** — branch, checkpoint, backup, migration rollback, feature flag, or explicit abort criterion.
 
 If any item is vague, stop and improve the plan. Readiness gates are cheaper than debugging an agent that started from bad assumptions.
 
@@ -923,6 +1096,7 @@ Phase 7:   Skillify stable workflows into ~/.claude/skills/         (OPTIONAL, m
 | Skip to implementation before the plan is solid | Phases 1-4 first, always |
 | Use the full methodology for every tiny change | Use Explore → Plan → Code → Verify → Commit for small, low-risk tasks |
 | Let a "quick fix" grow silently | Re-triage and promote to the full workflow when risk expands |
+| Create repos ad hoc with no ownership model | Decide repo topology, team ownership, and review gates up front |
 | Re-read the whole document after every edit | Use git diffs |
 | Keep going past 200k tokens of context | Clear context, re-read plan, continue |
 | Hope there are no fatal flaws | Define abort criteria upfront |
@@ -942,12 +1116,14 @@ Phase 7:   Skillify stable workflows into ~/.claude/skills/         (OPTIONAL, m
 | Rely on "think step by step" for everything | Use explicit reasoning only when the task needs it |
 | Build multi-agent systems by default | Split agents only when tools, permissions, or evaluation differ |
 | Launch many agents into the same files | Give each agent disjoint scope and isolate write work |
+| Pick a monorepo because big companies use one | Use a monorepo only when coupling, tooling, and ownership justify it |
 | Treat Claude Code like autocomplete | Manage the context-action-verification loop explicitly |
 | Ignore where the agent is running | Document local, cloud, remote, or CI environment assumptions |
 | Let context fill with raw logs and exploration | Summarize evidence and move durable state into files |
 | Rely on auto-compaction to preserve intent | Add compact instructions and handoff summaries |
 | Add MCP servers because they are available | Connect MCP only when live structured access beats copied context |
 | Give MCP broad write access on day one | Start read-only, minimize tools, and add audited writes deliberately |
+| Give broad repo admin access to everyone shipping code | Keep admin rights narrow; use teams, CODEOWNERS, rulesets, and environments for normal work |
 | Ship an agent without logs or evals | Define observability and regression cases before deployment |
 | Measure AI adoption by generated-code percentage | Measure onboarding time, PR cycle time, quality, reliability, and customer outcomes |
 | Keep legacy meetings and reviews by default | Audit noisy workflows; kill, automate, or simplify them |
@@ -959,6 +1135,7 @@ Phase 7:   Skillify stable workflows into ~/.claude/skills/         (OPTIONAL, m
 | Treat deeper AI review as automatically better | Require evidence-backed findings and reserve deep review for higher-risk changes |
 | Put important safety rules only in prompts | Enforce deterministic rules with fast blocking hooks |
 | Make every hook synchronous and expensive | Keep blocking hooks fast; run slow side effects async or at review gates |
+| Store all deployment secrets at repository scope | Use environment-specific secrets and reviewers for sensitive deploys |
 | Treat lightweight workflow as permission to skip planning | Keep exploration and planning before code, even in one session |
 | Call work done after local tests only | Run final review, behavioural proof, and post-ship checks |
 
@@ -976,4 +1153,4 @@ The methodology mitigates this by front-loading decisions into the plan (where y
 
 ---
 
-*Based on practitioner experience, refined with insights from Andrej Karpathy (who coined "vibe coding" and later proposed "agentic engineering"), Addy Osmani, Anthropic's [Prompting 101 | Code w/ Claude](https://www.youtube.com/watch?v=ysPbXH0LpIE) workshop, Google Cloud's [Building AI agents with Claude in Vertex AI](https://www.youtube.com/watch?v=TUysIAtxyrQ) workshop, Fiona Fung's [Running an AI-native engineering org](https://www.youtube.com/watch?v=igO8iyca2_g) talk, Anthropic's [Building AI-native at enterprise scale](https://www.youtube.com/watch?v=XFaeIbL-lvE) panel, Anthropic's [Build a proactive agent workflow with Claude Code](https://www.youtube.com/watch?v=eSP7PLTXNy8) workshop, Anthropic's [What's new in Claude Code](https://www.youtube.com/watch?v=sRvUXLquiRg) session, Anthropic's [Agent view in Claude Code](https://www.youtube.com/watch?v=-INveHwbRz4) demo, Anthropic's [How Claude Code Works](https://www.youtube.com/watch?v=6bs5b4FltCU) session, Anthropic's [Hooks in Claude Code](https://www.youtube.com/watch?v=IkaPHiMDazM) demo, Anthropic's [MCP in Claude Code](https://www.youtube.com/watch?v=kkBFmwkDzdo) demo, Anthropic's [Context Management in Claude Code](https://www.youtube.com/watch?v=eW3oTyfeWZ0) session, Anthropic's [Explore → Plan → Code → Commit workflow](https://www.youtube.com/watch?v=xJQuF02NAK8) session, Anthropic's [The CLAUDE.md file](https://www.youtube.com/watch?v=O0FGCxkHM-U) session, and the AI-assisted development community. Updated May 2026 to reflect Claude 4.7 adaptive thinking, context management, CLAUDE.md hygiene, MCP tooling, hooks, visual design workflows, structured prompt packets, production agent operations, proactive workflows, parallel agent coordination, environment boundaries, lightweight workflows, AI-native team process, enterprise rollout patterns, and capability intake.*
+*Based on practitioner experience, refined with insights from Andrej Karpathy (who coined "vibe coding" and later proposed "agentic engineering"), Addy Osmani, GitHub Docs on rulesets, teams, CODEOWNERS, Projects, template repositories, community health files, environments, Dependabot, and secret scanning, Google's [Software Engineering at Google](https://abseil.io/resources/swe-book) guidance on version control and dependency management at scale, Anthropic's [Prompting 101 | Code w/ Claude](https://www.youtube.com/watch?v=ysPbXH0LpIE) workshop, Google Cloud's [Building AI agents with Claude in Vertex AI](https://www.youtube.com/watch?v=TUysIAtxyrQ) workshop, Fiona Fung's [Running an AI-native engineering org](https://www.youtube.com/watch?v=igO8iyca2_g) talk, Anthropic's [Building AI-native at enterprise scale](https://www.youtube.com/watch?v=XFaeIbL-lvE) panel, Anthropic's [Build a proactive agent workflow with Claude Code](https://www.youtube.com/watch?v=eSP7PLTXNy8) workshop, Anthropic's [What's new in Claude Code](https://www.youtube.com/watch?v=sRvUXLquiRg) session, Anthropic's [Agent view in Claude Code](https://www.youtube.com/watch?v=-INveHwbRz4) demo, Anthropic's [How Claude Code Works](https://www.youtube.com/watch?v=6bs5b4FltCU) session, Anthropic's [Hooks in Claude Code](https://www.youtube.com/watch?v=IkaPHiMDazM) demo, Anthropic's [MCP in Claude Code](https://www.youtube.com/watch?v=kkBFmwkDzdo) demo, Anthropic's [Context Management in Claude Code](https://www.youtube.com/watch?v=eW3oTyfeWZ0) session, Anthropic's [Explore → Plan → Code → Commit workflow](https://www.youtube.com/watch?v=xJQuF02NAK8) session, Anthropic's [The CLAUDE.md file](https://www.youtube.com/watch?v=O0FGCxkHM-U) session, and the AI-assisted development community. Updated May 2026 to reflect GitHub operating models for scaling teams, repository topology choices, org-level governance, rulesets, deployment environments, community health defaults, dependency and secret security, Claude 4.7 adaptive thinking, context management, CLAUDE.md hygiene, MCP tooling, hooks, visual design workflows, structured prompt packets, production agent operations, proactive workflows, parallel agent coordination, environment boundaries, lightweight workflows, AI-native team process, enterprise rollout patterns, and capability intake.*
