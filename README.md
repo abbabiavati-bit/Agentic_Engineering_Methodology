@@ -193,6 +193,19 @@ Set up:
 5. **Concurrency and deployment history** so overlapping deploys and rollbacks are visible.
 6. **Custom protection rules** when third-party approval or change-management systems must gate deployment.
 
+### Actions and automation model
+
+Treat GitHub Actions as a delivery platform, not a pile of repository-local scripts.
+
+At team scale:
+
+1. **Prefer reusable workflows** for common CI, release, security, and deploy paths.
+2. **Separate workflow logic from app logic.** The repo should consume workflows cleanly, not bury delivery policy inside ad hoc YAML.
+3. **Version shared automation deliberately.** Breaking workflow changes should roll out like product changes.
+4. **Keep default permissions narrow.** Automation should start read-only or least-privileged, then expand only where justified.
+5. **Make automation outputs reviewable.** Releases, deployments, triage changes, and bot updates should leave artifacts humans can inspect.
+6. **Use Actions to enforce standards consistently** across repos, instead of relying on maintainers to remember the same setup manually.
+
 ### Planning and coordination model
 
 GitHub is also the work-management layer for many teams. Use it deliberately:
@@ -949,6 +962,20 @@ Each pattern needs a different Definition of Done. An internal PR agent needs me
 
 The common mistake is treating all three as "add AI." They are different products with different users, risks, and operating metrics.
 
+### AI rollout and measurement
+
+GitHub's Copilot rollout material reinforces a point that belongs in this methodology: buying seats is not adoption, and adoption is not impact.
+
+For team-scale AI rollout:
+
+1. **Start with a system goal.** Faster PR lead time, lower review burden, better test coverage, faster onboarding, or lower change failure rate.
+2. **Instrument leading indicators and system metrics together.** Usage and developer sentiment matter, but so do merge time, review time, successful builds, failure rate, and security posture.
+3. **Roll out with governance and enablement.** Access, training, policy, and measurement need to ship together.
+4. **Provision access intentionally.** Team-wide default access is fine only when enablement and policy are already ready; otherwise roll out by group.
+5. **Keep human judgment on subjective work.** AI is best at boilerplate, obvious fixes, objective policy checks, and first drafts. Experts still handle ambiguous product judgment, architecture, and subjective accessibility or UX tradeoffs.
+6. **Automate objective remediations first.** Objective issues such as simple policy violations, deterministic fixes, and repetitive hygiene work are the right starting point for agents.
+7. **Review AI by outcomes, not excitement.** If delivery metrics and quality do not improve, the rollout is not working regardless of usage volume.
+
 ---
 
 ## Tooling Notes and Claude Code Examples
@@ -1005,6 +1032,18 @@ Before adding another agent, ask:
 4. What logs prove which agent did what?
 
 If the answers are weak, keep it as one agent or ordinary code. Multi-agent architecture multiplies debugging surface area.
+
+### Agentic workflows on GitHub
+
+GitHub's agentic workflow direction reinforces the same rule used elsewhere in this methodology: autonomy is acceptable only when permissions, outputs, and review paths are bounded.
+
+Good defaults:
+
+1. **Start read-only.**
+2. **Use preapproved write paths or safe outputs** for controlled mutations.
+3. **Trigger from explicit artifacts** such as issues, PRs, CI failures, or labeled work queues.
+4. **Route results back into PRs, issues, comments, or workflow artifacts** so the work is inspectable.
+5. **Do not let agents invent their own backlog.**
 
 ### Hooks — Automated Behaviours
 
